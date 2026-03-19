@@ -39,3 +39,17 @@ pip install -r requirements.txt
 2. Run the evaluation command: `bash eval_scripts/eval.sh`
 
 
+## Citation 📚
+
+If you find this repository useful, please consider citing:
+
+```bibtex
+@article{cai2026iris,
+  title={Iris: Bringing Real-World Priors into Diffusion Model for Monocular Depth Estimation},
+  author={Cai, Xinhao and Pei, Gensheng and Sun, Zeren and Yao, Yazhou and Shen, Fumin and Wang, Wenguan},
+  journal={arXiv preprint arXiv:2603.16340},
+  year={2026}
+}
+```
+
+
