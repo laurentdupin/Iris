@@ -19,6 +19,17 @@ pip install -r requirements.txt
 ## 📦 Download
 - Download the [Iris model](https://huggingface.co/Strike1999/Iris) from Hugging Face and put it in the `trained_models/`
 
+## InferBridge native harness
+
+The `native` directory contains a dependency-free InferBridge harness for the
+released Iris checkpoint. It keeps preprocessing, VAE encoding, both Iris U-Net
+passes (`999` followed by `499`), VAE decoding, and depth output on the selected
+GPU. Windows and Linux use Vulkan; macOS uses Metal.
+
+The harness consumes the original Hugging Face Safetensors files. The empty
+prompt embedding is generated during model installation, so Python and the
+text encoder are not required during inference.
+
 
 ## 🕹️ Inference
 ### Testing on your images
