@@ -922,9 +922,11 @@ private:
                 NSProcessInfo.processInfo.operatingSystemVersion;
             const int input_channels = static_cast<int>(
                 model_.unet().tensor("conv_in.weight").dimensions[1]);
-            const char* model_identity = input_channels == 8
-                ? "41a8d50a989a757016251e170f39b6ac90e1ff324a90ae88c9a762ec549d0f34"
-                : "66f32e128f0f85a6f2d72893f56c663f8abde5a76678180b0eb51b1f3ed44899";
+            if (input_channels != 4)
+                throw std::runtime_error(
+                    "unsupported Iris UNet input channels");
+            const char* model_identity =
+                "dac6b77256db8d8fe35cb2e4b88d13bfd16b269eebe2b1310e9292e191ca4470";
             const std::string name =
                 std::string(model_identity) + "-" +
                 std::to_string(key.width) + "x" +

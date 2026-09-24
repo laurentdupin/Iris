@@ -10,27 +10,23 @@ namespace iris_native {
 namespace {
 
 constexpr std::array<char, 8> magic = {
-    'L', 'O', 'T', 'U', 'S', 'P', '0', '1'};
+    'I', 'R', 'I', 'S', 'P', '0', '0', '1'};
 constexpr std::uint32_t version = 1;
 constexpr std::uint32_t header_bytes = 512;
 constexpr std::uint32_t tokens = 77;
 constexpr std::uint32_t dimensions = 1024;
 constexpr const char vae_hash[] =
-    "fc436097e5cbb105c44df4403ae84acf7e81de1f64acfedc334888e9a8eea223";
+    "3e4c08995484ee61270175e9e7a072b66a6e4eeb5f0c266667fe1f45b90daf9a";
 constexpr const char text_hash[] =
-    "8a0859e9385019944df829693ffdef5bbde394950ff561cbfdd61fbb3ea76fb5";
+    "bc1827c465450322616f06dea41596eac7d493f4e95904dcb51f0fc745c4e13f";
 struct ModelIdentity {
     const char* revision;
     const char* unet_hash;
 };
 constexpr ModelIdentity identities[] = {
     {
-        "d8f1b0835745cb1ef5c8b89528c8d37bc764a37b",
-        "41a8d50a989a757016251e170f39b6ac90e1ff324a90ae88c9a762ec549d0f34",
-    },
-    {
-        "9b858ffdbec93117d50de899e8bccf64345d8f3b",
-        "66f32e128f0f85a6f2d72893f56c663f8abde5a76678180b0eb51b1f3ed44899",
+        "f33104411b63e6d983e794386ece1feeddafd7bf",
+        "dac6b77256db8d8fe35cb2e4b88d13bfd16b269eebe2b1310e9292e191ca4470",
     },
 };
 
@@ -77,16 +73,11 @@ TokenTensor load_empty_prompt_cache(
         u32(header.data() + 20) != dimensions) {
         throw std::runtime_error("invalid Iris prompt cache header");
     }
-    std::size_t identity_index = 0;
-    if (unet_input_channels == 8) {
-        identity_index = 0;
-    } else if (unet_input_channels == 4) {
-        identity_index = 1;
-    } else {
+    if (unet_input_channels != 4) {
         throw std::runtime_error(
             "unsupported Iris prompt cache model variant");
     }
-    const ModelIdentity& identity = identities[identity_index];
+    const ModelIdentity& identity = identities[0];
     const bool recognized_identity =
         matches_string(header.data() + 24, 41, identity.revision) &&
         matches_string(header.data() + 65, 65, identity.unet_hash);

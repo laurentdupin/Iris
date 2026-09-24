@@ -7,16 +7,12 @@ import hashlib
 import struct
 from pathlib import Path
 
-VAE_SHA = "fc436097e5cbb105c44df4403ae84acf7e81de1f64acfedc334888e9a8eea223"
-TEXT_SHA = "8a0859e9385019944df829693ffdef5bbde394950ff561cbfdd61fbb3ea76fb5"
+VAE_SHA = "3e4c08995484ee61270175e9e7a072b66a6e4eeb5f0c266667fe1f45b90daf9a"
+TEXT_SHA = "bc1827c465450322616f06dea41596eac7d493f4e95904dcb51f0fc745c4e13f"
 MODELS = {
-    "generation": (
-        "d8f1b0835745cb1ef5c8b89528c8d37bc764a37b",
-        "41a8d50a989a757016251e170f39b6ac90e1ff324a90ae88c9a762ec549d0f34",
-    ),
-    "regression": (
-        "9b858ffdbec93117d50de899e8bccf64345d8f3b",
-        "66f32e128f0f85a6f2d72893f56c663f8abde5a76678180b0eb51b1f3ed44899",
+    "iris": (
+        "f33104411b63e6d983e794386ece1feeddafd7bf",
+        "dac6b77256db8d8fe35cb2e4b88d13bfd16b269eebe2b1310e9292e191ca4470",
     ),
 }
 
@@ -45,8 +41,7 @@ def main() -> None:
         "--reuse-prompt-cache",
         type=Path,
         help=(
-            "reuse an existing IRISP01 payload; safe only because both "
-            "pinned Iris variants have the identical text encoder"
+            "reuse an existing IRISP001 payload from the pinned Iris snapshot"
         ),
     )
     args = parser.parse_args()
@@ -77,7 +72,7 @@ def main() -> None:
         source = args.reuse_prompt_cache.read_bytes()
         if (
             len(source) != 512 + 77 * 1024 * 4
-            or source[:8] != b"IRISP01"
+            or source[:8] != b"IRISP001"
             or struct.unpack_from("<IIII", source, 8)
             != (1, 512, 77, 1024)
         ):
@@ -107,7 +102,7 @@ def main() -> None:
         prompt_payload = prompt.numpy().tobytes()
 
     header = bytearray(512)
-    header[:8] = b"IRISP01"
+    header[:8] = b"IRISP001"
     struct.pack_into("<IIII", header, 8, 1, 512, 77, 1024)
     put(header, 24, 41, revision)
     put(header, 65, 65, unet_sha)
