@@ -214,8 +214,12 @@ void release_job(ibrh_job* job) {
 struct IrisGpuAdmission {
     explicit IrisGpuAdmission(std::shared_ptr<std::atomic<uint32_t>> value)
         : count(std::move(value)) {}
-    ~IrisGpuAdmission() { count->fetch_sub(1u); }
+    ~IrisGpuAdmission() { release(); }
+    void release() noexcept {
+        if (!released.exchange(true)) count->fetch_sub(1u);
+    }
     std::shared_ptr<std::atomic<uint32_t>> count;
+    std::atomic<bool> released{false};
 };
 
 class IrisGpuWorker {
@@ -259,6 +263,7 @@ public:
         }
         if (removed) {
             job->gpu_state.store(IBRH_JOB_CANCELLED);
+            job->gpu_admission->release();
             release_job(job);
         }
         return removed;
@@ -295,6 +300,7 @@ private:
             if (job == nullptr) continue;
             if (stopping || job->cancel_requested.load()) {
                 job->gpu_state.store(IBRH_JOB_CANCELLED);
+                job->gpu_admission->release();
                 release_job(job);
                 continue;
             }
@@ -327,6 +333,7 @@ private:
                 }
                 job->gpu_state.store(job->cancel_requested.load() ?
                     IBRH_JOB_CANCELLED : IBRH_JOB_FAILED);
+                job->gpu_admission->release();
             }
             release_job(job);
         }
@@ -803,6 +810,9 @@ ibrh_result IBRH_CALL job_poll(
             case iris_native::ExternalJobState::cancelled:
                 status->state = IBRH_JOB_CANCELLED; break;
         }
+        if (status->state != IBRH_JOB_QUEUED &&
+            status->state != IBRH_JOB_RUNNING)
+            job->gpu_admission->release();
     } else
 #endif
     status->state = IBRH_JOB_COMPLETE;

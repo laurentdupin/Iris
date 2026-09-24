@@ -7,8 +7,8 @@
   "contract": "InferBridge harness ABI 2.0 Core-owned D3D12/Vulkan transfers",
   "dll": {
     "relativePath": "native/out/foundation/Release/iris_native.dll",
-    "sha256": "3f8b97fa5c4efad509abe1880e18074bf195a7d8079886833cbb859a35315593",
-    "bytes": 889344
+    "sha256": "7e1823460734e7e5055f059b1f40f0ce73666a66485dd750f3e616d1741696c3",
+    "bytes": 872960
   },
   "variants": [
     {
@@ -16,7 +16,7 @@
       "snapshotRevision": "f33104411b63e6d983e794386ece1feeddafd7bf",
       "relativeL1": 3.58935e-06,
       "maximumAbsolute": 1.51396e-05,
-      "maximumSubmitReturnMs": 0.0081,
+      "maximumSubmitReturnMs": 0.0092,
       "uploadByteDelta": 0,
       "downloadByteDelta": 0,
       "sourceFrameId": 7007

@@ -474,6 +474,12 @@ int main() try {
     const char* stress_environment = std::getenv("IRIS_STRESS_FRAMES");
     const std::uint64_t total_frames = stress_environment
         ? std::max<std::uint64_t>(1u, std::stoull(stress_environment)) : 1u;
+    // Keep completed jobs and their Core-owned resources alive while later
+    // frames run. A displayed output lease has this lifetime in Deep Desktop;
+    // it must not continue consuming one of the harness's in-flight slots.
+    std::vector<ibrh_job*> retained_jobs;
+    std::vector<Capture> retained_sources;
+    std::vector<CoreOutput> retained_outputs;
     for (std::uint64_t frame = 7008u;
          frame < 7007u + total_frames; ++frame) {
         Capture next_source = upload_texture(selected.device.Get(), queue.Get(),
@@ -498,9 +504,9 @@ int main() try {
         maximum_submit_ms = std::max(maximum_submit_ms,
             std::chrono::duration<double, std::milli>(
                 std::chrono::steady_clock::now() - next_start).count());
-        api.job_release(job);
-        close_capture(source);
-        close_output(output);
+        retained_jobs.push_back(job);
+        retained_sources.push_back(std::move(source));
+        retained_outputs.push_back(std::move(output));
         source = std::move(next_source);
         output = std::move(next_output);
         job = next_job;
@@ -518,6 +524,9 @@ int main() try {
     }
     api.job_release(job);
     close_capture(source); close_output(output);
+    for (ibrh_job* retained : retained_jobs) api.job_release(retained);
+    for (Capture& retained : retained_sources) close_capture(retained);
+    for (CoreOutput& retained : retained_outputs) close_output(retained);
     api.model_unload(model); api.runtime_destroy(runtime);
     std::cout << "Iris ABI2 D3D12/Vulkan passed; frames=" << total_frames
               << "; max_submit_ms=" << maximum_submit_ms
