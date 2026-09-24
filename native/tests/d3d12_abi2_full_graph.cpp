@@ -363,7 +363,7 @@ int main() try {
         return 77;
     const std::string parameters =
         std::string("{\"PromptCache\":\"") + prompt_environment +
-        "\",\"Seed\":\"7\"}";
+        "\",\"Seed\":\"7\",\"Size\":\"256\"}";
     ibrh_model_load_request load{};
     load.struct_size = sizeof(load);
     load.api_version = IBRH_CURRENT_API_VERSION;
@@ -373,10 +373,12 @@ int main() try {
     check(api.model_load(runtime, sizeof(load), &load, &model), "model_load");
 
     constexpr std::uint32_t width = 64u, height = 64u;
+    constexpr std::uint32_t output_width = 256u, output_height = 256u;
     const auto source_pixels = pixels(width, height, 7u);
     Capture source = upload_texture(selected.device.Get(), queue.Get(),
         source_pixels, width, height);
-    CoreOutput output = create_core_output(selected.device.Get(), width, height);
+    CoreOutput output = create_core_output(
+        selected.device.Get(), output_width, output_height);
     ibrh_transfer_binding bindings[2]{};
     auto& input = bindings[0];
     input.struct_size = sizeof(input); input.api_version = IBRH_CURRENT_API_VERSION;
@@ -404,7 +406,9 @@ int main() try {
     target.resource.kind = IBRH_RESOURCE_KIND_IMAGE_2D;
     target.resource.access = IBRH_RESOURCE_ACCESS_WRITE;
     target.resource.pixel_format = IBRH_PIXEL_DEPTH_FLOAT32;
-    target.resource.width = width; target.resource.height = height; target.resource.depth = 1u;
+    target.resource.width = output_width;
+    target.resource.height = output_height;
+    target.resource.depth = 1u;
     target.resource.native_handle_type = IBRH_NATIVE_HANDLE_WIN32_SHARED;
     target.resource.native_handle = reinterpret_cast<std::uintptr_t>(output.texture_handle);
     target.synchronization.struct_size = sizeof(target.synchronization);
@@ -474,7 +478,8 @@ int main() try {
          frame < 7007u + total_frames; ++frame) {
         Capture next_source = upload_texture(selected.device.Get(), queue.Get(),
             pixels(width, height, static_cast<std::uint32_t>(frame)), width, height);
-        CoreOutput next_output = create_core_output(selected.device.Get(), width, height);
+        CoreOutput next_output = create_core_output(
+            selected.device.Get(), output_width, output_height);
         input.resource.native_handle =
             reinterpret_cast<std::uintptr_t>(next_source.texture_handle);
         input.synchronization.native_handle =

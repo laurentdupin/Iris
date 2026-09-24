@@ -55,8 +55,9 @@ int main() {
     const std::string model_path = path;
     const std::string parameters =
         std::string("{\"Models\":\"") +
-        (variant == nullptr ? "generation" : variant) +
-        "\",\"PromptCache\":\"" + prompt + "\"}";
+        (variant == nullptr ? "iris" : variant) +
+        "\",\"PromptCache\":\"" + prompt +
+        "\",\"Size\":\"256\"}";
     ibrh_model_load_request load_request{
         sizeof(load_request), IBRH_CURRENT_API_VERSION,
         view(model_path), view(parameters)};
@@ -73,6 +74,33 @@ int main() {
 
     constexpr uint32_t width = 320u;
     constexpr uint32_t height = 240u;
+    ibrh_resource shape_input{};
+    shape_input.width = width;
+    shape_input.height = height;
+    ibrh_output_plan_request plan{
+        sizeof(plan), IBRH_CURRENT_API_VERSION,
+        &shape_input, 1u, 0u, view(parameters)};
+    ibrh_port_descriptor planned{};
+    if (!check(
+            api.model_plan_outputs(
+                model, sizeof(plan), &plan, 1u, &planned) == IBRH_OK,
+            "output planning failed")) {
+        api.model_unload(model);
+        api.runtime_destroy(runtime);
+        return 4;
+    }
+    const uint32_t output_width = planned.width;
+    const uint32_t output_height = planned.height;
+    if (!check(
+            std::max(output_width, output_height) == 256u &&
+                output_width % 8u == 0u && output_height % 8u == 0u,
+            "planned output size is incorrect")) {
+        api.model_unload(model);
+        api.runtime_destroy(runtime);
+        return 4;
+    }
+    std::cout << "planned_size=" << output_width << 'x'
+              << output_height << '\n';
     std::vector<uint8_t> pixels(width * height * 4u);
     for (uint32_t y = 0u; y < height; ++y) {
         for (uint32_t x = 0u; x < width; ++x) {
@@ -101,7 +129,8 @@ int main() {
     input.native_handle_type = IBRH_NATIVE_HANDLE_HOST_POINTER;
     input.native_handle = static_cast<uint64_t>(
         reinterpret_cast<uintptr_t>(pixels.data()));
-    std::vector<float> depth(width * height);
+    std::vector<float> depth(
+        static_cast<size_t>(output_width) * output_height);
     ibrh_resource output{};
     output.struct_size = sizeof(output);
     output.api_version = IBRH_CURRENT_API_VERSION;
@@ -109,10 +138,10 @@ int main() {
     output.kind = IBRH_RESOURCE_KIND_IMAGE_2D;
     output.access = IBRH_RESOURCE_ACCESS_WRITE;
     output.pixel_format = IBRH_PIXEL_DEPTH_FLOAT32;
-    output.width = width;
-    output.height = height;
+    output.width = output_width;
+    output.height = output_height;
     output.depth = 1u;
-    output.row_stride_bytes = width * sizeof(float);
+    output.row_stride_bytes = output_width * sizeof(float);
     output.byte_size = depth.size() * sizeof(float);
     output.native_handle_type = IBRH_NATIVE_HANDLE_HOST_POINTER;
     output.native_handle = static_cast<uint64_t>(

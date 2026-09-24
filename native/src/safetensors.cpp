@@ -23,7 +23,40 @@ struct ParsedTensor {
     std::uint32_t rank = 0;
     std::uint64_t begin = 0;
     std::uint64_t end = 0;
+    bool f16 = false;
 };
+
+float half_to_float(std::uint16_t value) {
+    const std::uint32_t sign =
+        static_cast<std::uint32_t>(value & 0x8000u) << 16u;
+    int exponent = static_cast<int>((value >> 10u) & 0x1fu);
+    std::uint32_t mantissa = value & 0x03ffu;
+    std::uint32_t bits = 0u;
+    if (exponent == 0u) {
+        if (mantissa == 0u) {
+            bits = sign;
+        } else {
+            exponent = 1u;
+            while ((mantissa & 0x0400u) == 0u) {
+                mantissa <<= 1u;
+                --exponent;
+            }
+            mantissa &= 0x03ffu;
+            bits = sign |
+                (static_cast<std::uint32_t>(exponent + 112) << 23u) |
+                (mantissa << 13u);
+        }
+    } else if (exponent == 31u) {
+        bits = sign | 0x7f800000u | (mantissa << 13u);
+    } else {
+        bits = sign |
+            (static_cast<std::uint32_t>(exponent + 112) << 23u) |
+            (mantissa << 13u);
+    }
+    float result = 0.0f;
+    std::memcpy(&result, &bits, sizeof(result));
+    return result;
+}
 
 class Json {
 public:
@@ -304,9 +337,11 @@ private:
             expect(':');
             whitespace();
             if (field == "dtype") {
-                if (have_dtype || string() != "F32") {
-                    fail("Iris requires unique F32 tensors");
-                }
+                if (have_dtype) fail("duplicate safetensors dtype");
+                const std::string dtype = string();
+                if (dtype == "F16") result.f16 = true;
+                else if (dtype != "F32")
+                    fail("Iris requires F16 or F32 tensors");
                 have_dtype = true;
             } else if (field == "shape") {
                 if (have_shape) {
@@ -489,19 +524,39 @@ SafeTensors::SafeTensors(const std::string& path_utf8) {
                 }
                 elements *= dimension;
             }
+            const std::uint64_t element_bytes = item.f16 ? 2u : 4u;
             if (elements >
-                    std::numeric_limits<std::uint64_t>::max() / 4 ||
-                elements * 4 != item.end - item.begin) {
+                    std::numeric_limits<std::uint64_t>::max() /
+                        element_bytes ||
+                elements * element_bytes != item.end - item.begin) {
                 throw std::runtime_error(
                     "invalid safetensors tensor byte count");
             }
+            const float* tensor_data = nullptr;
+            if (item.f16) {
+                std::vector<float> values(
+                    static_cast<std::size_t>(elements));
+                const std::byte* source =
+                    this->view_ + data_offset + item.begin;
+                for (std::uint64_t index = 0; index < elements; ++index) {
+                    const std::uint16_t half =
+                        static_cast<std::uint16_t>(
+                            static_cast<unsigned char>(source[index * 2u])) |
+                        static_cast<std::uint16_t>(
+                            static_cast<unsigned char>(source[index * 2u + 1u])
+                            << 8u);
+                    values[static_cast<std::size_t>(index)] =
+                        half_to_float(half);
+                }
+                auto inserted = converted_.emplace(
+                    item.name, std::move(values));
+                tensor_data = inserted.first->second.data();
+            } else {
+                tensor_data = reinterpret_cast<const float*>(
+                    this->view_ + data_offset + item.begin);
+            }
             TensorView view{
-                reinterpret_cast<const float*>(
-                    this->view_ + data_offset + item.begin),
-                item.dimensions,
-                item.rank,
-                elements,
-            };
+                tensor_data, item.dimensions, item.rank, elements};
             if (!tensors_.emplace(item.name, view).second) {
                 throw std::runtime_error(
                     "duplicate safetensors tensor name");
@@ -536,6 +591,7 @@ SafeTensors::~SafeTensors() {
 
 void SafeTensors::close() noexcept {
     tensors_.clear();
+    converted_.clear();
     aliases_.clear();
     names_.clear();
 #if defined(_WIN32)
