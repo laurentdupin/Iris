@@ -1,0 +1,35 @@
+{
+  "date": "2026-09-25",
+  "adapter": {
+    "name": "AMD Radeon RX 9070",
+    "luid": "8ea8010000000000"
+  },
+  "contract": "InferBridge harness ABI 2.0 Core-owned D3D12/Vulkan transfers",
+  "dll": {
+    "relativePath": "native/out/foundation/Release/iris_native.dll",
+    "sha256": "f04a8faa42b0a5f9a99a27f4cdc36815bb28cbf259caf842ccbf61da55d3f991",
+    "bytes": 786432
+  },
+  "variants": [
+    {
+      "id": "iris",
+      "snapshotRevision": "f33104411b63e6d983e794386ece1feeddafd7bf",
+      "relativeL1": 0.00000358935,
+      "maximumAbsolute": 0.0000151396,
+      "maximumSubmitReturnMs": 0.0156,
+      "uploadByteDelta": 0,
+      "downloadByteDelta": 0,
+      "sourceFrameId": 7007
+    }
+  ],
+  "checks": {
+    "exactAdapterLuid": true,
+    "coreOwnedInputOutput": true,
+    "explicitWaitSignalFences": true,
+    "gpuSeedGeneration": true,
+    "finiteVaryingR32Output": true,
+    "sourceFrameCorrelation": true,
+    "zeroHostTransfers": true,
+    "queueWideIdleCalls": 0
+  }
+}
